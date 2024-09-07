@@ -19,11 +19,13 @@ const otpStore = {};
 
 // CORS Configuration to Allow All Origins
 const corsOptions = {
-    origin: process.env.FRONTENDURL,
+    origin: process.env.FRONTENDURL||'https://todo-blackash.netlify.app',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 };
+
+app.use(cors(corsOptions));
 
 // To Begin The Connection With Database
 mongoose.connect(process.env.DBURL)
@@ -190,7 +192,12 @@ app.post('/api/login/', async (req, res) => {
 
         //Genrating Token
         const token = signUser(payload);
-        res.cookie("token", token, { maxAge: 3600000, httpOnly: true, secure: true, sameSite: "strict" })
+        res.cookie("token", token, { 
+            maxAge: 3600000, 
+            httpOnly: true, 
+            secure: true, // Ensure this is correct for your environment
+            sameSite: "none"
+        });
 
         return res.status(200).json({ status: "success", payload, token })
 
