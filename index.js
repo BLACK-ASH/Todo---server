@@ -261,7 +261,7 @@ app.put("/api/user/todos", check, async (req, res) => {
     }
 })
 
-// To Add User Todo
+// To Get User Todo
 app.get("/api/user/todos", check, async (req, res) => {
     try {
         // Getting user from database
@@ -294,7 +294,6 @@ app.patch("/api/user/todos", check, async (req, res) => {
         // Updating the user todo
         const updatedNewTodo = userTodos.map((e) => {
             if (e.id === id) {
-                console.log(e);
                 return {
                     todo: todo,
                     id: id,
@@ -303,7 +302,6 @@ app.patch("/api/user/todos", check, async (req, res) => {
             }
             return e
         })
-        console.log(updatedNewTodo);
 
         // Updating todos in database
         await User.findByIdAndUpdate(req.user.id, { todos: updatedNewTodo })
