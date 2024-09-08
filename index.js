@@ -19,10 +19,9 @@ const otpStore = {};
 
 // CORS Configuration to Allow All Origins
 const corsOptions = {
-    origin: process.env.FRONTENDURL||'https://todo-blackash.netlify.app',
+    origin: process.env.FRONTENDURL,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
+    allowedHeaders: ['Content-Type', 'Authorization']
 };
 
 app.use(cors(corsOptions));
@@ -92,7 +91,10 @@ app.post("/api/register/", async (req, res) => {
             email: user.email
         }
 
-        return res.status(200).json({ status: "success", user })
+        // To Create User Token
+        const token = signUser(payload);
+
+        return res.status(200).json({ status: "success", payload, token })
 
     } catch (err) {
         console.error("Error logging in:", err);
@@ -192,12 +194,6 @@ app.post('/api/login/', async (req, res) => {
 
         //Genrating Token
         const token = signUser(payload);
-        res.cookie("token", token, { 
-            maxAge: 3600000, 
-            httpOnly: true, 
-            secure: true, // Ensure this is correct for your environment
-            sameSite: "none"
-        });
 
         return res.status(200).json({ status: "success", payload, token })
 
