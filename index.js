@@ -141,7 +141,7 @@ app.post('/api/signout', (req, res) => {
     res.clearCookie('token', {
         httpOnly: true,
         secure: true, // Use 'secure' in production with HTTPS
-        sameSite: 'strict',
+        sameSite: 'none',
     });
     res.status(200).send({ status: "success", message: 'Signed out successfully' });
 });
