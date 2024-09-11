@@ -52,11 +52,11 @@ const transporter = nodemailer.createTransport({
 });
 
 // Function to generate and send OTP
-function sendOtp(email, otp) {
+function sendOtp(email, otp,resend=false) {
     const mailOptions = {
         from: process.env.EMAIL,
         to: email,
-        subject: 'Your OTP Code',
+        subject: resend? 'Resend OTP' :'Your OTP Code',
         text: `Your OTP code is: ${otp} for conformation on todo`
     };
     return transporter.sendMail(mailOptions);
@@ -108,14 +108,14 @@ app.post('/api/register-otp', (req, res) => {
     const { email } = req.body;
 
     // Generate a unique OTP
-    const otp = Math.floor(1000 + Math.random() * 9000).toString(); // 6-digit OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit OTP
     otpStore[email] = otp;
 
     // Send OTP email
     sendOtp(email, otp)
         .then(() => {
             users[email] = { verified: false };
-            res.status(200).send('Registration successful! Please check your email for the OTP.');
+            res.status(200).send('OTP sent successfully. Please check your email for the OTP.');
         })
         .catch((error) => {
             console.error('Error sending OTP email:', error);
@@ -138,27 +138,25 @@ app.post('/api/verify-otp', (req, res) => {
     }
 });
 
-// To Sign Out User
-app.post('/api/signout', (req, res) => {
-    res.clearCookie('token', {
-        httpOnly: true,
-        secure: true, // Use 'secure' in production with HTTPS
-        sameSite: 'none',
-    });
-    res.status(200).send({ status: "success", message: 'Signed out successfully' });
+// For Resend Otp
+app.post('/api/resend-otp', (req, res) => {
+    const { email } = req.body;
+
+    // Generate a unique OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit OTP
+    otpStore[email] = otp;
+
+    // Send OTP email
+    sendOtp(email, otp,true)
+        .then(() => {
+            users[email] = { verified: false };
+            res.status(200).send('OTP resend successful! Please check your email for the OTP.');
+        })
+        .catch((error) => {
+            console.error('Error sending OTP email:', error);
+            res.status(500).send('Error sending OTP email.');
+        });
 });
-
-// To Give Username
-app.get("/api/username/", check, async (req, res) => {
-    try {
-        const user = await User.findOne({ email: req.user.email }).select('-password');
-
-        return res.json(user.username);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server error" });
-    }
-})
 
 // To Login User
 app.post('/api/login/', async (req, res) => {
@@ -229,6 +227,8 @@ app.get("/api/user/profile/", check, async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 })
+
+
 
 // To Add User Todo 
 app.put("/api/user/todos", check, async (req, res) => {
