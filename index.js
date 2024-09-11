@@ -228,7 +228,17 @@ app.get("/api/user/profile/", check, async (req, res) => {
     }
 })
 
-
+// To Update User Profile
+app.put("/api/user/profile/", check, async (req, res) => {
+    const { username } = req.body
+    try {
+        const user = await User.findOneAndUpdate({ email: req.user.email }, { username: username });
+        return res.json("Profile Updated Successfully");
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Username already exists" });
+    }
+});
 
 // To Add User Todo 
 app.put("/api/user/todos", check, async (req, res) => {
