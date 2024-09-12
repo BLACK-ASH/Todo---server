@@ -12,6 +12,7 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const bodyParser = require('body-parser');
 const cors = require("cors");
+const { log } = require("console");
 
 // Dummy in-memory user database
 const users = {};
@@ -76,6 +77,7 @@ const sendRegistationEmail = async (email, username) => {
         subject: `Welcome to Todo, ${username}! 🎉`,
         text: `
         Hi ${username},
+
 Welcome to Todo! We are excited to have you on board. Your registration has been successfully completed, and you can now start organizing your tasks efficiently with Todo.
 Here’s a quick summary of your account details:
 
@@ -90,6 +92,7 @@ The Todo Team
 Email: blackash.github@gmail.com
         `
     };
+    return transporter.sendMail(mailOptions);
 }
 
 // To Register User
