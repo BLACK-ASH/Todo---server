@@ -52,16 +52,45 @@ const transporter = nodemailer.createTransport({
 });
 
 // Function to generate and send OTP
-function sendOtp(email, otp,resend=false) {
+function sendOtp(email, otp, resend = false) {
     const mailOptions = {
         from: process.env.EMAIL,
         to: email,
-        subject: resend? 'Resend OTP' :'Your OTP Code',
-        text: `Your OTP code is: ${otp} for conformation on todo`
+        subject: resend ? 'Resend OTP' : 'Your OTP Code',
+        text: `Your OTP code is: ${otp} for conformation on todo
+Thank you for choosing Todo to keep your tasks on track!
+
+Best regards,
+The Todo Team
+Email: blackash.github@gmail.com        
+        `
     };
     return transporter.sendMail(mailOptions);
 }
 
+// Function to send registration successful email
+const sendRegistationEmail = async (email, username) => {
+    const mailOptions = {
+        from: process.env.EMAIL,
+        to: email,
+        subject: `Welcome to Todo, ${username}! 🎉`,
+        text: `
+        Hi ${username},
+Welcome to Todo! We are excited to have you on board. Your registration has been successfully completed, and you can now start organizing your tasks efficiently with Todo.
+Here’s a quick summary of your account details:
+
+Username: ${username}
+
+Feel free to log in and begin managing your tasks. If you have any questions or need help, our support team is here for you. Just drop us an email at blackash.github@gmail.com.
+
+Thank you for choosing Todo to keep your tasks on track!
+
+Best regards,
+The Todo Team
+Email: blackash.github@gmail.com
+        `
+    };
+}
 
 // To Register User
 app.post("/api/register/", async (req, res) => {
@@ -93,7 +122,7 @@ app.post("/api/register/", async (req, res) => {
 
         // To Create User Token
         const token = signUser(payload);
-
+        sendRegistationEmail(email, username)
         return res.status(200).json({ status: "success", payload, token })
 
     } catch (err) {
@@ -125,8 +154,16 @@ app.post('/api/register-otp', (req, res) => {
 });
 
 // To Verify Otp
-app.post('/api/verify-otp', (req, res) => {
+app.post('/api/verify-otp', async (req, res) => {
     const { email, otp } = req.body;
+
+    // Check if user exists
+    const isUser = await User.findOne({ email });
+
+    if (isUser) {
+        return res.status(400).json({ message: "User Already Exist" });
+    }
+
     const storedOtp = otpStore[email];
 
     if (storedOtp && storedOtp === otp) {
@@ -147,7 +184,7 @@ app.post('/api/resend-otp', (req, res) => {
     otpStore[email] = otp;
 
     // Send OTP email
-    sendOtp(email, otp,true)
+    sendOtp(email, otp, true)
         .then(() => {
             users[email] = { verified: false };
             res.status(200).send('OTP resend successful! Please check your email for the OTP.');
@@ -200,6 +237,106 @@ app.post('/api/login/', async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 });
+
+// To Reset Password Function
+const sendResetOtp = async (email, otp) => {
+    const mailOptions = {
+        from: process.env.EMAIL,
+        to: email,
+        subject: 'Reset Password OTP',
+        text: `Your OTP code is: ${otp} for reset password on todo app.
+        
+Thank you for choosing Todo to keep your tasks on track!
+
+Best regards,
+The Todo Team
+Email: blackash.github@gmail.com
+        `
+    };
+    return transporter.sendMail(mailOptions);
+}
+
+// To Forgot Password Otp
+app.post('/api/reset-password-otp/', async (req, res) => {
+    const { email } = req.body;
+
+    const isUser = await User.findOne({ email });
+    if (!isUser) {
+        return res.status(400).json({ message: "User not found" });
+    }
+
+    // Generate a unique OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+    otpStore[email] = otp;
+
+    // Send Password Reset OTP email
+    sendResetOtp(email, otp)
+        .then(() => {
+            users[email] = { resetVerified: false };
+            res.status(200).send('OTP sent successfully. Please check your email for the OTP.');
+        })
+        .catch((error) => {
+            console.error('Error sending OTP email:', error);
+            res.status(500).send('Error sending OTP email.');
+        });
+
+})
+
+// To Send Confirmation mail
+const sendConfirmReset = async (email) => {
+    const mailOptions = {
+        from: process.env.EMAIL,
+        to: email,
+        subject: 'Password Reset Successful',
+        text: `Your password has been reset successfully.
+Please login with your new password.
+
+If you did not request a password reset, please report this issue.
+on todo app team.
+
+Thank you for choosing Todo to keep your tasks on track!
+
+Best regards,
+The Todo Team
+Email: blackash.github@gmail.com
+         `
+    };
+    try {
+        await transporter.sendMail(mailOptions);
+    } catch (error) {
+        console.error('Error sending confirmation email:', error);
+    }
+}
+
+// To Reset Password
+app.post('/api/reset-password/', async (req, res) => {
+    const { email, resetPassword, otp } = req.body;
+    const storedOtp = otpStore[email];
+
+    const user = await User.findOne({ email });
+    if (!user) {
+        return res.status(400).json({ message: "User not found" });
+    }
+
+    try {
+        if (storedOtp && storedOtp === otp) {
+            users[email].resetVerified = true;
+            user.password = resetPassword;
+            delete otpStore[email];
+            await user.save();
+            sendConfirmReset(email);
+            return res.status(200).json({ message: "Password reset successful" });
+        } else {
+            return res.status(400).json({ message: "Invalid OTP" });
+        }
+    }
+    catch (err) {
+        console.error("Error resetting password:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+
+
+})
 
 // To Get User Profile
 app.get("/api/user/profile/", check, async (req, res) => {
